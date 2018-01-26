@@ -2,6 +2,8 @@ import abc
 import inspect
 import json
 
+import sys
+
 
 class JsonRpcError(Exception):
     def __init__(self, code, message, data=None):
@@ -70,12 +72,17 @@ class Response(object, metaclass=abc.ABCMeta):
 
 
 class ErrorResponse(Response):
-    def __init__(self, request, code, message, data=None, exception=None):
+    def __init__(self, request, code, message, data=None, exc_info=True):
         super().__init__(request)
         self.code = code
         self.message = message
         self.data = data
-        self.exception = exception
+
+        if exc_info is True:
+            self.exc_info = sys.exc_info()
+        else:
+            self.exc_info = exc_info
+
 
     def dict(self):
         error = {
@@ -233,9 +240,9 @@ class Service(object):
             method_name, args, kwargs = self.before_call(request, request.method(), request.args(), request.kwargs())
             response = SuccessResponse(request, self.call_method(request, method_name, args, kwargs))
         except JsonRpcError as e:
-            response = ErrorResponse(request, e.code, e.message, e.data, exception=e)
-        except Exception as e:
-            response = ErrorResponse(request, -32603, "Internal error.", exception=e)
+            response = ErrorResponse(request, e.code, e.message, e.data)
+        except:
+            response = ErrorResponse(request, -32603, "Internal error.")
         finally:
             return self.after_call(request, response)
 

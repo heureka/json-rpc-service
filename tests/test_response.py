@@ -25,7 +25,7 @@ class ResponseTest(unittest.TestCase):
 
     def test_error_response(self):
         request = Request(parsed_request={"jsonrpc": "2.0", "id": 123, "method": "foo"})
-        response = ErrorResponse(request, -123, "Out of icecream.", exception="Just so you know.")
+        response = ErrorResponse(request, -123, "Out of icecream.", exc_info=("Passed as it is",))
 
         expected = {
             "jsonrpc": "2.0",
@@ -38,7 +38,7 @@ class ResponseTest(unittest.TestCase):
 
         self.assertEqual(response.dict(), expected)
         self.assertEqual(json.loads(response.body()), expected)
-        self.assertEqual(response.exception, "Just so you know.")
+        self.assertEqual(response.exc_info, ("Passed as it is",))
 
     def test_error_response_for_notification(self):
         request = Request(parsed_request={"jsonrpc": "2.0", "method": "foo"})
@@ -58,5 +58,5 @@ class ResponseTest(unittest.TestCase):
 
         self.assertEqual(response.dict(), expected)
         self.assertEqual(response.body(), "")
-        self.assertIsNone(response.exception)
+        self.assertEqual(response.exc_info, (None, None, None))
 

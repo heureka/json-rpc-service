@@ -86,19 +86,12 @@ class HandleRequestTest(unittest.TestCase):
         })
 
     def test_fail_as_notification(self):
-        request = Request(parsed_request={"jsonrpc": "2.0", "id": 321, "method": "fail"})
+        request = Request(parsed_request={"jsonrpc": "2.0", "method": "fail"})
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {
-            "jsonrpc": "2.0",
-            "id": 321,
-            'error': {
-                'code': -32603,
-                'message': "Internal error."
-            }
-        })
+        self.assertEqual(response.body(), "")
 
-        self.assertIsInstance(response.exception, NameError)
+        self.assertIsInstance(response.exc_info[1], NameError)
 
     def test_fail_with_grace(self):
         request = Request(parsed_request={"jsonrpc": "2.0", "id": 321, "method": "fail_with_grace"})
@@ -114,4 +107,4 @@ class HandleRequestTest(unittest.TestCase):
             }
         })
 
-        self.assertIsInstance(response.exception, JsonRpcError)
+        self.assertIsInstance(response.exc_info[1], JsonRpcError)
