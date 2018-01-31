@@ -60,15 +60,17 @@ class Response(object, metaclass=abc.ABCMeta):
     def __init__(self, request):
         self.request = request
 
+    @property
     @abc.abstractmethod
     def dict(self):
         pass
 
+    @property
     def body(self):
-        if self.request.is_notification():
+        if self.request.notification:
             return ""
         else:
-            return json.dumps(self.dict())
+            return json.dumps(self.dict)
 
 
 class ErrorResponse(Response):
@@ -83,7 +85,7 @@ class ErrorResponse(Response):
         else:
             self.exc_info = exc_info
 
-
+    @property
     def dict(self):
         error = {
             'message': self.message,
@@ -93,9 +95,14 @@ class ErrorResponse(Response):
         if self.data is not None:
             error['data'] = self.data
 
+        try:
+            request_id = self.request.id
+        except:
+            request_id = None
+
         return {
             "jsonrpc": "2.0",
-            "id": self.request.id(),
+            "id": request_id,
             "error": error
         }
 
@@ -105,29 +112,25 @@ class SuccessResponse(Response):
         super().__init__(request)
         self.result = result
 
+    @property
     def dict(self):
         return {
             "jsonrpc": "2.0",
-            "id": self.request.id(),
+            "id": self.request.id,
             "result": self.result
         }
 
 
 class Request(object):
-    def __init__(self, raw_request=None, parsed_request=None):
-        self._id = None
-        self._method = None
-        self._args = []
-        self._kwargs = {}
-        self._notification = False
-        self._prepared = False
-
+    def __init__(self, *, raw_request=None, parsed_request=None):
         if raw_request is None and parsed_request is None:
             raise ValueError('Either "raw_request" or "parsed_request" must be set for Request.')
 
         self._raw_request = raw_request
         self._parsed_request = parsed_request
+        self._dict = None
 
+    @property
     def parsed_request(self):
         if self._parsed_request is None:
             try:
@@ -137,66 +140,73 @@ class Request(object):
 
         return self._parsed_request
 
+    @property
+    def dict(self):
+        if self._dict is None:
+            data = self.parsed_request
+
+            if not isinstance(data, dict):
+                raise InvalidRequest('Expected an object as request body. Batch requests are not supported.')
+
+            self._dict = data
+
+        return self._dict
+
+    @property
     def id(self):
-        self._prepare()
-        return self._id
+        return self.dict.get('id')
 
-    def method(self):
-        self._prepare()
-        return self._method
-
-    def args(self):
-        self._prepare()
-        return self._args
-
-    def kwargs(self):
-        self._prepare()
-        return self._kwargs
-
-    def is_notification(self):
-        self._prepare()
-        return self._notification
-
-    def _prepare(self):
-        if self._prepared:
-            return
-
-        self._prepared = True
-
-        data = self.parsed_request()
-
-        if not isinstance(data, dict):
-            raise InvalidRequest('Expected an object as request body. Batch requests are not supported.')
-
-        # Remember `id` as the first thing. `id` can be ommited for notifications.
-        self._id = data.get('id')
-
-        if 'jsonrpc' not in data:
+    @property
+    def version(self):
+        try:
+            return self.dict['jsonrpc']
+        except KeyError:
             raise InvalidRequest('Missing "jsonrpc" member in request.')
 
-        if data['jsonrpc'] != "2.0":
-            raise InvalidRequest('Only JSON-RPC version "2.0" is supported.')
-
-        if self._id is None:
-            # Flag as notification only if client specified protocol correctly and thus should know he can't expect
-            # response if id is not set.
-            self._notification = True
-
-        if 'method' not in data:
+    @property
+    def method(self):
+        try:
+            method = self.dict['method']
+        except KeyError:
             raise InvalidRequest('Missing "method" member in request.')
 
-        if not isinstance(data['method'], str):
+        if not isinstance(method, str):
             raise InvalidRequest('"method" of request must be a string.')
 
-        self._method = data['method']
+        return method
 
-        if 'params' in data:
-            if isinstance(data['params'], list):
-                self._args.extend(data['params'])
-            elif isinstance(data['params'], dict):
-                self._kwargs.update(data['params'])
-            else:
-                raise InvalidRequest('"params" of request must be either object or array if present.')
+    @property
+    def params(self):
+        if 'params' not in self.dict:
+            return None
+
+        if isinstance(self.dict['params'], (list, dict)):
+            return self.dict['params']
+        else:
+            raise InvalidRequest('"params" of request must be either object or array if present.')
+
+    @property
+    def args(self):
+        if isinstance(self.params, list):
+            return self.params
+        else:
+            return []
+
+    @property
+    def kwargs(self):
+        if isinstance(self.params, dict):
+            return self.params
+        else:
+            return {}
+
+    @property
+    def notification(self):
+        # Flag as notification only if client specified protocol correctly and thus should know he can't expect
+        # response if id is not set.
+        try:
+            return self.version == "2.0" and self.id is None
+        except InvalidRequest:
+            return False
 
 
 class Service(object):
@@ -235,22 +245,15 @@ class Service(object):
         return self._methods.copy()
 
     def handle_request(self, request):
-        response = None
         try:
-            method_name, args, kwargs = self.before_call(request, request.method(), request.args(), request.kwargs())
-            response = SuccessResponse(request, self.call_method(request, method_name, args, kwargs))
+            if request.version != "2.0":
+                raise InvalidRequest('Only JSON-RPC version "2.0" is supported.')
+
+            return SuccessResponse(request, self.call_method(request, request.method, request.args, request.kwargs))
         except JsonRpcError as e:
-            response = ErrorResponse(request, e.code, e.message, e.data)
+            return ErrorResponse(request, e.code, e.message, e.data)
         except:
-            response = ErrorResponse(request, -32603, "Internal error.")
-        finally:
-            return self.after_call(request, response)
-
-    def before_call(self, request, method_name, args, kwargs):
-        return method_name, args, kwargs
-
-    def after_call(self, request, response):
-        return response
+            return ErrorResponse(request, -32603, "Internal error.")
 
     def call_method(self, request, method_name, args, kwargs):
         if method_name not in self._methods:
@@ -259,8 +262,8 @@ class Service(object):
         method = self._methods[method_name]
 
         try:
-            inspect.getcallargs(method, *request.args(), **request.kwargs())
+            inspect.signature(method).bind(*args, **kwargs)
         except TypeError as e:
             raise InvalidParams(str(e))
 
-        return method(*request.args(), **request.kwargs())
+        return method(*args, **kwargs)

@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from jsonrpcservice import Service, SuccessResponse, Request, JsonRpcError
+from jsonrpcservice import Service, Request, JsonRpcError
 
 
 class CustomException(Exception):
@@ -9,32 +9,22 @@ class CustomException(Exception):
 
 
 class CustomService(Service):
-    def __init__(self, language):
-        super().__init__()
-        self.default_language = language
+    def call_method(self, request, method_name, args, kwargs):
+        started_at = 123000
 
-    def before_call(self, request, method_name, args, kwargs):
         if 'language' not in kwargs:
-            kwargs['language'] = self.default_language
+            kwargs['language'] = request.language
 
-        request.started_at = 123000
-
-        return method_name, args, kwargs
-
-    def after_call(self, request, response):
-        if isinstance(response, SuccessResponse):
-            response.result['_timing'] = 124000 - request.started_at
-
-        return response
-
-    def call_method(self, *args, **kwargs):
         try:
-            return super().call_method(*args, **kwargs)
+            result = super().call_method(request, method_name, args, kwargs)
+            result['_timing'] = 124000 - started_at
+
+            return result
         except CustomException as e:
             raise JsonRpcError(-2288, "There is some custom problem.", data=str(e))
 
 
-service = CustomService('en')
+service = CustomService()
 
 
 @service.method
@@ -48,11 +38,13 @@ def get_donut(language):
 
 
 class TestExtensibility(unittest.TestCase):
-    def test_default_language(self):
+    def test_parameter_injection(self):
         request = Request(raw_request='{"jsonrpc": "2.0", "id": 666, "method": "get_donut"}')
+        request.language = "en"
+
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {
+        self.assertEqual(json.loads(response.body), {
             "jsonrpc": "2.0",
             "id": 666,
             "result": {
@@ -67,7 +59,7 @@ class TestExtensibility(unittest.TestCase):
         )
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {
+        self.assertEqual(json.loads(response.body), {
             "jsonrpc": "2.0",
             "id": 666,
             "result": {
@@ -82,7 +74,7 @@ class TestExtensibility(unittest.TestCase):
         )
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {
+        self.assertEqual(json.loads(response.body), {
             "jsonrpc": "2.0",
             "id": 666,
             'error': {

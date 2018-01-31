@@ -11,8 +11,8 @@ class ResponseTest(unittest.TestCase):
         request = Request(parsed_request={"jsonrpc": "2.0", "id": 123, "method": "foo"})
         response = SuccessResponse(request, result)
 
-        self.assertEqual(response.dict(), {"jsonrpc": "2.0", "id": 123, "result": result})
-        self.assertEqual(json.loads(response.body()), {"jsonrpc": "2.0", "id": 123, "result": result})
+        self.assertEqual(response.dict, {"jsonrpc": "2.0", "id": 123, "result": result})
+        self.assertEqual(json.loads(response.body), {"jsonrpc": "2.0", "id": 123, "result": result})
 
     def test_success_response_for_notification(self):
         result = {"foo": "bar"}
@@ -20,8 +20,8 @@ class ResponseTest(unittest.TestCase):
         request = Request(parsed_request={"jsonrpc": "2.0", "method": "foo"})
         response = SuccessResponse(request, result)
 
-        self.assertEqual(response.dict(), {"jsonrpc": "2.0", "id": None, "result": result})
-        self.assertEqual(response.body(), "")
+        self.assertEqual(response.dict, {"jsonrpc": "2.0", "id": None, "result": result})
+        self.assertEqual(response.body, "")
 
     def test_error_response(self):
         request = Request(parsed_request={"jsonrpc": "2.0", "id": 123, "method": "foo"})
@@ -36,8 +36,8 @@ class ResponseTest(unittest.TestCase):
             }
         }
 
-        self.assertEqual(response.dict(), expected)
-        self.assertEqual(json.loads(response.body()), expected)
+        self.assertEqual(response.dict, expected)
+        self.assertEqual(json.loads(response.body), expected)
         self.assertEqual(response.exc_info, ("Passed as it is",))
 
     def test_error_response_for_notification(self):
@@ -56,7 +56,7 @@ class ResponseTest(unittest.TestCase):
             }
         }
 
-        self.assertEqual(response.dict(), expected)
-        self.assertEqual(response.body(), "")
+        self.assertEqual(response.dict, expected)
+        self.assertEqual(response.body, "")
         self.assertEqual(response.exc_info, (None, None, None))
 

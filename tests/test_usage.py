@@ -27,48 +27,47 @@ def fail_with_grace():
     raise JsonRpcError(-13, "Graceful as a fail whale.", "Graceful!")
 
 
-
 class HandleRequestTest(unittest.TestCase):
     def test_foo(self):
         request = Request(raw_request='{"jsonrpc": "2.0", "id": 321, "method": "foo"}')
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {"jsonrpc": "2.0", "id": 321, "result": "Foo is not bar."})
+        self.assertEqual(json.loads(response.body), {"jsonrpc": "2.0", "id": 321, "result": "Foo is not bar."})
 
     def test_add_with_dict_params(self):
         request = Request(parsed_request={"jsonrpc": "2.0", "id": 321, "method": "add", "params": {"a": 5, "b": 13}})
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {"jsonrpc": "2.0", "id": 321, "result": 18})
+        self.assertEqual(json.loads(response.body), {"jsonrpc": "2.0", "id": 321, "result": 18})
 
     def test_add_with_list_params(self):
         request = Request(parsed_request={"jsonrpc": "2.0", "id": 321, "method": "add", "params": [5, 13]})
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {"jsonrpc": "2.0", "id": 321, "result": 18})
+        self.assertEqual(json.loads(response.body), {"jsonrpc": "2.0", "id": 321, "result": 18})
 
     def test_ping(self):
         request = Request(raw_request='{"jsonrpc": "2.0", "id": 321, "method": "ping"}')
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {"jsonrpc": "2.0", "id": 321, "result": "pong"})
+        self.assertEqual(json.loads(response.body), {"jsonrpc": "2.0", "id": 321, "result": "pong"})
 
     def test_notification(self):
         request = Request(raw_request='{"jsonrpc": "2.0", "method": "ping"}')
         response = service.handle_request(request)
 
-        self.assertEqual(response.body(), "")
+        self.assertEqual(response.body, "")
 
     def test_missing_params(self):
         request = Request(parsed_request={"jsonrpc": "2.0", "id": 321, "method": "add"})
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {
+        self.assertEqual(json.loads(response.body), {
             "jsonrpc": "2.0",
             "id": 321,
             'error': {
                 'code': -32602,
-                'message': "add() missing 2 required positional arguments: 'a' and 'b'"
+                'message': "missing a required argument: 'a'"
             }
         })
 
@@ -76,7 +75,7 @@ class HandleRequestTest(unittest.TestCase):
         request = Request(parsed_request={"jsonrpc": "2.0", "id": 321, "method": "fail"})
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {
+        self.assertEqual(json.loads(response.body), {
             "jsonrpc": "2.0",
             "id": 321,
             'error': {
@@ -89,7 +88,7 @@ class HandleRequestTest(unittest.TestCase):
         request = Request(parsed_request={"jsonrpc": "2.0", "method": "fail"})
         response = service.handle_request(request)
 
-        self.assertEqual(response.body(), "")
+        self.assertEqual(response.body, "")
 
         self.assertIsInstance(response.exc_info[1], NameError)
 
@@ -97,7 +96,7 @@ class HandleRequestTest(unittest.TestCase):
         request = Request(parsed_request={"jsonrpc": "2.0", "id": 321, "method": "fail_with_grace"})
         response = service.handle_request(request)
 
-        self.assertEqual(json.loads(response.body()), {
+        self.assertEqual(json.loads(response.body), {
             "jsonrpc": "2.0",
             "id": 321,
             'error': {
