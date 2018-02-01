@@ -38,10 +38,10 @@ class RequestTest(unittest.TestCase):
 
     def test_is_notification(self):
         request = Request(parsed_request={'jsonrpc': '2.0', 'id': 123, 'method': 'foo'})
-        self.assertFalse(request.notification)
+        self.assertFalse(request.is_notification)
 
         request = Request(parsed_request={'jsonrpc': '2.0', 'method': 'foo'})
-        self.assertTrue(request.notification)
+        self.assertTrue(request.is_notification)
 
     def test_parse_error(self):
         request = Request(raw_request="I am little teapot, short and stout.")
@@ -51,11 +51,11 @@ class RequestTest(unittest.TestCase):
     def test_invalid_request(self):
         request = Request(parsed_request=[])
         self.assertRaisesRegex(InvalidRequest, 'Expected an object', lambda: request.id)
-        self.assertFalse(request.notification)
+        self.assertFalse(request.is_notification)
 
         request = Request(parsed_request={})
         self.assertRaisesRegex(InvalidRequest, 'Missing "jsonrpc"', lambda: request.version)
-        self.assertFalse(request.notification)
+        self.assertFalse(request.is_notification)
 
         request = Request(parsed_request={"id": 123})
         self.assertRaisesRegex(InvalidRequest, 'Missing "jsonrpc"', lambda: request.version)
@@ -64,7 +64,7 @@ class RequestTest(unittest.TestCase):
         request = Request(parsed_request={"jsonrpc": "2.0"})
         self.assertRaisesRegex(InvalidRequest, 'Missing "method"', lambda: request.method)
         self.assertIs(request.id, None)
-        self.assertTrue(request.notification)
+        self.assertTrue(request.is_notification)
 
         request = Request(parsed_request={"jsonrpc": "2.0", "method": 1})
         self.assertRaisesRegex(InvalidRequest, 'must be a string', lambda: request.method)

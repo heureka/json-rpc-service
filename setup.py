@@ -7,5 +7,5 @@ setup(
     license='MIT',
     author='Heureka.cz',
     author_email='fialovi@heureka.cz',
-    description='Simple extendable JSON-RPC Service builder / handler.',
+    description='Simple extendable JSON-RPC Service builder and handler.',
 )
