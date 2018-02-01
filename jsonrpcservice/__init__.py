@@ -348,7 +348,7 @@ class Service(object):
         >>> request = Request(raw_request='{"jsonrpc": "2.0", "id": 1, "method": "hello_kitty"}')
         >>> response = service.handle_request(request)
         >>> response.body
-        {"jsonrpc": "2.0", "id": 1, "error": {"code": -32601, "message": "Method \"{}\" is not defined."}}
+        {"jsonrpc": "2.0", "id": 1, "error": {"code": -32601, "message": "Method \"hello_kitty\" is not defined."}}
 
     """
 
