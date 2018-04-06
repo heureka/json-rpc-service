@@ -419,14 +419,28 @@ class Service(object):
                 If `module` is given, will add all public (not prefixed with `_`) functions defined at module level.
             prefix (str): Each method name will be prefixed by this.
         """
+        if inspect.ismodule(methods):
+            for name in dir(methods):
+                if name.startswith('_'):
+                    continue
+
+                method = getattr(methods, name)
+
+                if inspect.isfunction(method) and inspect.getmodule(method) is methods and method.__name__ == name:
+                    self.add_method(prefix + name, method)
+
+            return
+
         if isinstance(methods, (list, tuple)):
             methods = {method.__name__: method for method in methods}
-        elif not isinstance(methods, dict):
-            methods = {method: getattr(methods, method) for method in dir(methods) if not method.startswith('_')}
 
-        for name, method in methods.items():
-            if callable(method):
+        if isinstance(methods, dict):
+            for name, method in methods.items():
                 self.add_method(prefix + name, method)
+        else:
+            raise ValueError(
+                "Cannot add methods from {!r}. `methods` must be list, tuple, dict or module.".format(methods)
+            )
 
     def get_methods(self):
         """Return mapping of registered method names to callables.
