@@ -326,7 +326,7 @@ class Request(object):
         """
         try:
             return self.version == "2.0" and self.id is None
-        except InvalidRequest:
+        except (InvalidRequest, ParseError):
             return False
 
 

@@ -47,6 +47,7 @@ class RequestTest(unittest.TestCase):
         request = Request(raw_request="I am little teapot, short and stout.")
 
         self.assertRaises(ParseError, lambda: request.id)
+        self.assertFalse(request.is_notification)
 
     def test_invalid_request(self):
         request = Request(parsed_request=[])
