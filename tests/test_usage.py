@@ -80,7 +80,7 @@ class HandleRequestTest(unittest.TestCase):
             "id": 321,
             'error': {
                 'code': -32603,
-                'message': "Internal error."
+                'message': "Internal error"
             }
         })
 

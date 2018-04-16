@@ -1,8 +1,12 @@
 import abc
 import inspect
 import json
+import logging
 
 import sys
+import traceback
+
+logger = logging.getLogger(__name__)
 
 
 class JsonRpcError(Exception):
@@ -16,6 +20,7 @@ class JsonRpcError(Exception):
         message (str): Error message
         data (Any): Arbitrary user data about the error.
     """
+
     def __init__(self, code, message, data=None):
         """
         Args:
@@ -352,7 +357,8 @@ class Service(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, debug=False):
+        self._debug = debug
         self._methods = {}
         """dict[str,typing.Callable]: Mapping of method names to callables."""
 
@@ -464,10 +470,30 @@ class Service(object):
                 raise InvalidRequest('Only JSON-RPC version "2.0" is supported.')
 
             return SuccessResponse(request, self.call_method(request, request.method, request.args, request.kwargs))
-        except JsonRpcError as e:
+
+        except BaseException as e:
+            logger.exception('Call to "{}" method failed'.format(request.method), extra={'event': 'rpc_error'})
+
+            if self._debug:
+                exc_data = {
+                    '_exception': {
+                        'type': type(e).__name__,
+                        'message': str(e),
+                        'traceback': traceback.format_exc().splitlines()
+                    }
+                }
+
+            if not isinstance(e, JsonRpcError):
+                e = InternalError()
+
+            if self._debug:
+                if e.data is None:
+                    e.data = exc_data
+                elif isinstance(e.data, dict):
+                    e.data.update(exc_data)
+                    # else cannot add debug info
+
             return ErrorResponse(request, e.code, e.message, e.data)
-        except:
-            return ErrorResponse(request, -32603, "Internal error.")
 
     def call_method(self, request, method_name, args, kwargs):
         """Call method registered under `method_name` with given `args` and `kwargs`.
@@ -485,6 +511,15 @@ class Service(object):
         Returns:
             Any: Result of method call (must be serializable by json.dumps).
         """
+        logger.debug(
+            'Got RPC request',
+            extra={'event': 'rpc_request', 'request': request.dict}
+        )
+        logger.info(
+            'Calling "{}" method'.format(method_name),
+            extra={'event': 'rpc_call'}
+        )
+
         if method_name not in self._methods:
             raise MethodNotFound('Method "{}" is not defined.'.format(method_name))
 
@@ -495,4 +530,11 @@ class Service(object):
         except TypeError as e:
             raise InvalidParams(str(e))
 
-        return method(*args, **kwargs)
+        response = method(*args, **kwargs)
+
+        logger.debug(
+            'Returning RPC response',
+            extra={'event': 'rpc_response', 'response': response}
+        )
+
+        return response
