@@ -526,7 +526,7 @@ class Service(object):
         method = self._methods[method_name]
 
         try:
-            inspect.signature(method).bind(*args, **kwargs)
+            inspect.signature(method, follow_wrapped=False).bind(*args, **kwargs)
         except TypeError as e:
             raise InvalidParams(str(e))
 

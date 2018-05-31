@@ -1,5 +1,6 @@
 import json
 import unittest
+from functools import wraps
 
 from jsonrpcservice import Service, JsonRpcError, Request
 
@@ -25,6 +26,21 @@ def fail():
 @service.method
 def fail_with_grace():
     raise JsonRpcError(-13, "Graceful as a fail whale.", "Graceful!")
+
+
+def inject_arg_decorator(func):
+    @wraps(func)
+    def wrapper(a):
+        return func(a, 10)
+
+    return wrapper
+
+
+@service.method
+@inject_arg_decorator
+def injected_arg(a, b):
+    """`a` is required, `b` is injected by decorator."""
+    return a + b
 
 
 class HandleRequestTest(unittest.TestCase):
@@ -107,3 +123,28 @@ class HandleRequestTest(unittest.TestCase):
         })
 
         self.assertIsInstance(response.exc_info[1], JsonRpcError)
+
+    def test_injected_arg(self):
+        """Test that only one argument is required (method signature is detected correctly)."""
+
+        request = Request(parsed_request={"jsonrpc": "2.0", "id": 321, "method": "injected_arg", "params": []})
+        response = service.handle_request(request)
+
+        self.assertEqual(json.loads(response.body), {
+            "jsonrpc": "2.0",
+            "id": 321,
+            "error": {
+                "code": -32602,
+                "message": "missing a required argument: 'a'"
+            }
+        })
+
+        request = Request(parsed_request={"jsonrpc": "2.0", "id": 321, "method": "injected_arg", "params": [1]})
+        response = service.handle_request(request)
+
+        self.assertEqual(json.loads(response.body), {
+            "jsonrpc": "2.0",
+            "id": 321,
+            "result": 11
+        })
+
