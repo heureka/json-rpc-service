@@ -148,3 +148,15 @@ class HandleRequestTest(unittest.TestCase):
             "result": 11
         })
 
+    def test_parse_error(self):
+        request = Request(raw_request="foo")
+        response = service.handle_request(request)
+
+        self.assertEqual(json.loads(response.body), {
+            'id': None,
+            'jsonrpc': '2.0',
+            'error': {
+                'code': -32700,
+                'message': 'Expecting value: line 1 column 1 (char 0)'
+            }
+        })

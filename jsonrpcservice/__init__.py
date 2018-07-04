@@ -472,7 +472,7 @@ class Service(object):
             return SuccessResponse(request, self.call_method(request, request.method, request.args, request.kwargs))
 
         except BaseException as e:
-            logger.exception('Call to "{}" method failed'.format(request.method), extra={'event': 'rpc_error'})
+            logger.exception('JSON-RPC call failed:', extra={'event': 'rpc_error'})
 
             if self._debug:
                 exc_data = {
