@@ -515,10 +515,6 @@ class Service(object):
             'Got RPC request',
             extra={'event': 'rpc_request', 'request': request.dict}
         )
-        logger.info(
-            'Calling "{}" method'.format(method_name),
-            extra={'event': 'rpc_call'}
-        )
 
         if method_name not in self._methods:
             raise MethodNotFound('Method "{}" is not defined.'.format(method_name))
@@ -530,7 +526,15 @@ class Service(object):
         except TypeError as e:
             raise InvalidParams(str(e))
 
-        response = method(*args, **kwargs)
+        try:
+            response = method(*args, **kwargs)
+        except Exception as e:
+            raise e
+        finally:
+            logger.info(
+                'Called "{}" method'.format(method_name),
+                extra={'event': 'rpc_call'}
+            )
 
         logger.debug(
             'Returning RPC response',
